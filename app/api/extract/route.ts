@@ -6,13 +6,23 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const SYSTEM_PROMPT = `You are an expert at analyzing business quotation documents.
 Extract all variable fields from the document and return them as structured JSON.
 
-A "variable" is any field that would change between different quotes:
-- Customer name, address, contact details
-- Quote number, date, expiry date
-- Product/service descriptions, quantities, prices
-- Totals, VAT amounts, discounts
-- Payment terms, delivery dates
-- Any custom fields specific to the business
+There are two kinds of variables:
+
+1. USER-FILLED variables — fields the user must fill in each time:
+   - Customer name, address, contact details
+   - Quote number, date, expiry date
+   - Product/service descriptions, quantities, unit prices
+   - Payment terms, delivery dates, notes
+
+2. CALCULATED variables — fields that can be computed automatically from line items:
+   - Subtotal (sum of all line item totals) → formula: "subtotal"
+   - VAT / tax amount (subtotal × VAT rate) → formula: "vat_amount"
+   - Total / grand total (subtotal + VAT) → formula: "total"
+   - Discount amount → formula: "discount_amount"
+   Mark these with type: "calculated" and include the formula field.
+   Do NOT ask the user to fill these in manually.
+
+Also detect the document's primary brand color (the most prominent non-black, non-white color used for headings, borders, or highlights). Return it as a hex code.
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):
 {
@@ -21,7 +31,8 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no expla
       "id": "unique_snake_case_id",
       "key": "variable_key",
       "label": "Human readable label",
-      "type": "text|number|date|currency|email|phone|textarea",
+      "type": "text|number|date|currency|email|phone|textarea|calculated",
+      "formula": "subtotal|vat_amount|total|discount_amount|null",
       "required": true,
       "skipped": false,
       "placeholder": "example value or hint",
@@ -35,7 +46,8 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no expla
     "hasTotals": true,
     "hasFooter": false,
     "sections": ["header", "client", "items", "totals", "terms"]
-  }
+  },
+  "primaryColor": "#2563eb"
 }`;
 
 export async function POST(req: NextRequest) {
@@ -138,8 +150,17 @@ export async function POST(req: NextRequest) {
 
     const extractedData = JSON.parse(jsonMatch[0]);
 
+    // Clean up: remove "null" formula strings
+    if (extractedData.variables) {
+      extractedData.variables = extractedData.variables.map((v: Record<string, unknown>) => ({
+        ...v,
+        formula: v.formula === "null" || !v.formula ? undefined : v.formula,
+      }));
+    }
+
     return NextResponse.json({
       ...extractedData,
+      primaryColor: extractedData.primaryColor || "#2563eb",
       rawText: textContent,
     });
   } catch (error) {

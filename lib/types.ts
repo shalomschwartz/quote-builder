@@ -5,7 +5,15 @@ export type VariableType =
   | "currency"
   | "email"
   | "phone"
-  | "textarea";
+  | "textarea"
+  | "calculated";
+
+export type CalculatedFormula =
+  | "subtotal"
+  | "vat_amount"
+  | "total"
+  | "discount_amount"
+  | "line_count";
 
 export type VariableSection =
   | "header"
@@ -26,6 +34,7 @@ export interface Variable {
   placeholder: string;
   originalText: string;
   section: VariableSection;
+  formula?: CalculatedFormula;
 }
 
 export interface LineItem {
@@ -48,6 +57,8 @@ export interface Template {
   name: string;
   variables: Variable[];
   documentStructure: DocumentStructure;
+  primaryColor: string;
+  logoBase64?: string;
   createdAt: string;
 }
 
