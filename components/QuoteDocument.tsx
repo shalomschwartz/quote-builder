@@ -360,10 +360,7 @@ export function QuoteDocument({
             {lineItems.map((item, index) => (
               <View
                 key={item.id}
-                style={[
-                  styles.tableRow,
-                  index % 2 === 1 ? styles.tableRowEven : {},
-                ]}
+                style={index % 2 === 1 ? [styles.tableRow, styles.tableRowEven] : styles.tableRow}
               >
                 <Text style={[styles.tableCell, styles.colDescription]}>
                   {item.description}
@@ -415,7 +412,8 @@ export function QuoteDocument({
         )}
 
         {/* Footer */}
-        <View style={styles.footer} fixed>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <View style={styles.footer} {...({ fixed: true } as any)}>
           <Text style={styles.footerText}>
             {footerVars.length > 0
               ? getVal(values, footerVars[0].key)
